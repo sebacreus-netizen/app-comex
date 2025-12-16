@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Comercio Exterior – Tablero (CSV publicado)</title>
+  <style>
+    :root{
+      --win-bg:#ECE9D8;
+      --win-panel:#F3F3F3;
+      --win-border:#9E9E9E;
+      --win-border-dark:#7A7A7A;
+      --win-text:#111;
+      --win-muted:#666;
+      --win-blue:#0A246A;
+      --row-alt:#FAFAFA;
+      --shadow: 0 1px 0 rgba(255,255,255,.8) inset, 0 1px 2px rgba(0,0,0,.15);
+    }
+    *{box-sizing:border-box}
+    html, body{height:100%; margin:0;}
+    body{
+      font-size:12px;
+      font-family: Tahoma, Segoe UI, Verdana, Arial, sans-serif;
+      background: linear-gradient(#FFFFFF, var(--win-bg));
+      color:var(--win-text);
+      overflow:hidden;
+    }
+    .app{width:100vw;height:100vh;display:flex;flex-direction:column;padding:6px;}
+    .titlebar{
+      background: linear-gradient(#1D4FA3, var(--win-blue));
+      color:#fff;border:1px solid #001B4A;border-bottom:none;border-radius:10px 10px 0 0;
+      padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow: var(--shadow);
+      flex:0 0 auto; position:relative;
+    }
+    .titlebar .icon{width:18px;height:18px;background:#fff;border-radius:3px;position:relative;flex:0 0 auto;}
+    .titlebar .icon:before{content:"";position:absolute;inset:3px;border:2px solid #1D4FA3;border-top-color:#55A0FF;border-left-color:#55A0FF;}
+    .titlebar h1{font-size:14px;margin:0;font-weight:700;}
+    .titlebar .hint{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;opacity:.95;white-space:nowrap;}
+    .window{
+      flex:1 1 auto;min-height:0;border:1px solid var(--win-border-dark);border-radius:0 0 10px 10px;
+      background: var(--win-panel);box-shadow: var(--shadow);display:flex;flex-direction:column;overflow:hidden;
+    }
+    .tabs{
+      display:flex;gap:4px;padding:8px 8px 0;background: var(--win-panel);
+      border-bottom:1px solid var(--win-border);flex:0 0 auto;
+    }
+    .tab{
+      appearance:none;border:1px solid var(--win-border);border-bottom:none;
+      background: linear-gradient(#FFFFFF, #E6E6E6);
+      padding:8px 10px;border-radius:6px 6px 0 0;cursor:pointer;font-size:12px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.8) inset;
+    }
+    .tab[aria-selected="true"]{background: linear-gradient(#FFFFFF, #F9F9F9);font-weight:700;position:relative;top:1px;}
+    .content{flex:1 1 auto;min-height:0;padding:12px;background:#F9F9F9;overflow:hidden;display:flex;flex-direction:column;}
+    section[role="tabpanel"]{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;}
+    .hidden{display:none !important}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .toolbar .left,.toolbar .right{display:flex;gap:8px;align-items:center}
+    .search{display:flex;gap:6px;align-items:center;}
+    .search input{width:min(360px, 46vw);font-size:11px;padding:5px 7px;border:1px solid var(--win-border);border-radius:4px;background:#fff;}
+    .badge{font-size:10px;padding:2px 6px;border-radius:10px;border:1px solid var(--win-border);background:#f2f2f2;color:#333;}
+    .btn{
+      appearance:none;font-size:11px;border:1px solid var(--win-border-dark);
+      background: linear-gradient(#FFFFFF, #DADADA);
+      padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;box-shadow: var(--shadow);
+      white-space:nowrap;
+    }
+    .btn:active{transform: translateY(1px)}
+    .table-area{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;border-radius:10px;}
+    table{
+      width:100%;
+      table-layout:fixed;
+      border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--win-border);
+      border-radius:10px;overflow:hidden;box-shadow: 0 1px 0 rgba(255,255,255,.8) inset;
+    }
+    thead th{
+      text-align:left;font-size:10px;padding:8px;border-bottom:1px solid var(--win-border);
+      background: linear-gradient(#FFFFFF, #EDEDED);
+      position:sticky;top:0;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    tbody td{
+      font-size:10px;padding:6px;border-bottom:1px solid #eee;vertical-align:top;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    tbody tr:nth-child(even){background:var(--row-alt)}
+    .mini{font-size:11px;color:var(--win-muted)}
+    .error{color:#8B0000;font-weight:700;margin:6px 2px;}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="titlebar">
+      <div class="icon" aria-hidden="true"></div>
+      <h1>Comercio Exterior – Tablero (CSV publicado)</h1>
+      <div class="hint">Lee: <b>gestion_embarques.csv</b> y <b>plan_de_pagos.csv</b></div>
+    </div>
+
+    <div class="window">
+      <div class="tabs" role="tablist" aria-label="Solapas">
+        <button class="tab" role="tab" id="tab-gest" aria-selected="true" aria-controls="panel-gest">Gestión de Embarques (CSV)</button>
+        <button class="tab" role="tab" id="tab-pagos" aria-selected="false" aria-controls="panel-pagos">Plan de Pagos (CSV)</button>
+      </div>
+
+      <div class="content">
+        <section id="panel-gest" role="tabpanel" aria-labelledby="tab-gest">
+          <div class="toolbar">
+            <div class="left">
+              <span class="badge" id="gestStatus">—</span>
+            </div>
+            <div class="right">
+              <div class="search">
+                <span class="mini">Buscar</span>
+                <input id="searchGest" placeholder="Filtrar…" />
+              </div>
+              <button class="btn" id="btnReloadGest" type="button">Recargar</button>
+            </div>
+          </div>
+
+          <div id="gestMsg" class="mini"></div>
+
+          <div class="table-area">
+            <table id="tableGestCsv">
+              <thead><tr id="headGest"></tr></thead>
+              <tbody id="bodyGest"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="panel-pagos" role="tabpanel" aria-labelledby="tab-pagos" class="hidden">
+          <div class="toolbar">
+            <div class="left">
+              <span class="badge" id="pagosStatus">—</span>
+            </div>
+            <div class="right">
+              <div class="search">
+                <span class="mini">Buscar</span>
+                <input id="searchPagos" placeholder="Filtrar…" />
+              </div>
+              <button class="btn" id="btnReloadPagos" type="button">Recargar</button>
+            </div>
+          </div>
+
+          <div id="pagosMsg" class="mini"></div>
+
+          <div class="table-area">
+            <table id="tablePagosCsv">
+              <thead><tr id="headPagos"></tr></thead>
+              <tbody id="bodyPagos"></tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const tabs = [
+      { btn: document.getElementById('tab-gest'), panel: document.getElementById('panel-gest') },
+      { btn: document.getElementById('tab-pagos'), panel: document.getElementById('panel-pagos') },
+    ];
+    function activateTab(idx){
+      tabs.forEach((t,i)=>{
+        const sel = i===idx;
+        t.btn.setAttribute('aria-selected', sel ? 'true' : 'false');
+        t.panel.classList.toggle('hidden', !sel);
+      });
+    }
+    tabs.forEach((t,i)=>t.btn.addEventListener('click', ()=>activateTab(i)));
+
+    function safeText(s){ return (s ?? '').toString(); }
+
+    async function fetchCsvText(filename){
+      const res = await fetch(filename, { cache: "no-store" });
+      if(!res.ok){
+        throw new Error(`No se pudo leer ${filename} (HTTP ${res.status}). ¿Está subido junto al index.html?`);
+      }
+      return await res.text();
+    }
+
+    function renderTable({headerEl, bodyEl, rows, cols, filterText}){
+      headerEl.innerHTML = '';
+      cols.forEach(c=>{
+        const th = document.createElement('th');
+        th.textContent = c;
+        headerEl.appendChild(th);
+      });
+
+      bodyEl.innerHTML = '';
+      const q = (filterText || '').trim().toLowerCase();
+
+      for(const r of rows){
+        const joined = cols.map(c=>safeText(r[c])).join(' ').toLowerCase();
+        if(q && !joined.includes(q)) continue;
+
+        const tr = document.createElement('tr');
+        cols.forEach(c=>{
+          const td = document.createElement('td');
+          td.textContent = safeText(r[c]);
+          td.title = td.textContent.trim();
+          tr.appendChild(td);
+        });
+        bodyEl.appendChild(tr);
+      }
+    }
+
+    async function loadAndRender({filename, headerEl, bodyEl, statusEl, msgEl, searchEl}){
+      statusEl.textContent = `Cargando ${filename}…`;
+      msgEl.className = 'mini';
+      msgEl.textContent = '';
+
+      try{
+        const text = await fetchCsvText(filename);
+
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+        const rows = (parsed.data || []).filter(r => Object.values(r||{}).some(v => String(v||'').trim() !== ''));
+        const cols = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields : Object.keys(rows[0] || {});
+
+        if(parsed.errors && parsed.errors.length){
+          msgEl.className = 'error';
+          msgEl.textContent = 'Advertencia: el CSV tiene detalles de formato. Igual se intentó cargar.';
+        }
+
+        renderTable({ headerEl, bodyEl, rows, cols, filterText: searchEl.value });
+
+        statusEl.textContent = `${filename}: ${rows.length} filas`;
+        if(!rows.length){
+          msgEl.className = 'error';
+          msgEl.textContent = 'No hay filas para mostrar. ¿El CSV está vacío?';
+        }
+      }catch(err){
+        statusEl.textContent = `${filename}: error`;
+        msgEl.className = 'error';
+        msgEl.textContent = err.message;
+        headerEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+      }
+    }
+
+    // Gestión
+    const headGest = document.getElementById('headGest');
+    const bodyGest = document.getElementById('bodyGest');
+    const gestStatus = document.getElementById('gestStatus');
+    const gestMsg = document.getElementById('gestMsg');
+    const searchGest = document.getElementById('searchGest');
+
+    async function loadGest(){
+      return loadAndRender({
+        filename: 'gestion_embarques.csv',
+        headerEl: headGest,
+        bodyEl: bodyGest,
+        statusEl: gestStatus,
+        msgEl: gestMsg,
+        searchEl: searchGest
+      });
+    }
+
+    // Pagos
+    const headPagos = document.getElementById('headPagos');
+    const bodyPagos = document.getElementById('bodyPagos');
+    const pagosStatus = document.getElementById('pagosStatus');
+    const pagosMsg = document.getElementById('pagosMsg');
+    const searchPagos = document.getElementById('searchPagos');
+
+    async function loadPagos(){
+      return loadAndRender({
+        filename: 'plan_de_pagos.csv',
+        headerEl: headPagos,
+        bodyEl: bodyPagos,
+        statusEl: pagosStatus,
+        msgEl: pagosMsg,
+        searchEl: searchPagos
+      });
+    }
+
+    document.getElementById('btnReloadGest').addEventListener('click', loadGest);
+    document.getElementById('btnReloadPagos').addEventListener('click', loadPagos);
+
+    searchGest.addEventListener('input', loadGest);
+    searchPagos.addEventListener('input', loadPagos);
+
+    // init
+    loadGest();
+    loadPagos();
+  </script>
+</body>
+</html>
